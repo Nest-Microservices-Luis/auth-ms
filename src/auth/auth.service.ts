@@ -3,10 +3,15 @@ import { PrismaService } from '../prisma.service';
 import { RpcException } from '@nestjs/microservices';
 import { LoginUserDto, RegisterUserDto } from './dto';
 import * as bcryptjs from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { JwtPayload } from './interfaces/jwt-payload.interfaces';
+import { envs } from 'src/config';
 
 @Injectable()
 export class AuthService {
-    constructor(private readonly prisma: PrismaService
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly jwtService: JwtService
 
     ) { }
 
@@ -16,6 +21,28 @@ export class AuthService {
     onModuleInit() {
         this.logger.log('AuthService initialized');
         this.prisma.$connect();
+    }
+
+
+    async signJwt(payload: JwtPayload) {
+        return this.jwtService.signAsync(payload);
+    }
+
+    async verifyToken(token: string) {
+        try {
+            const { sub, iat, exp, ...user } = await this.jwtService.verify(token, {
+                secret: envs.JWT_SECRET,
+            });
+            return {
+                user: user,
+                token: await this.signJwt(user),
+            }
+        } catch (error) {
+            throw new RpcException({
+                status: 400,
+                message: 'Invalid token'
+            })
+        }
     }
 
 
@@ -43,11 +70,11 @@ export class AuthService {
                 }
             });
 
-            const { password: __, ...userWithoutPassword } = newUser;
+            const { password: __, createdAt, updatedAt, ...userWithoutPassword } = newUser;
 
             return {
                 user: userWithoutPassword,
-                token: 'token' // TODO: Generar el token
+                token: await this.signJwt(userWithoutPassword),
             }
 
 
@@ -87,11 +114,11 @@ export class AuthService {
                 })
             }
 
-            const { password: __, ...userWithoutPassword } = user;
+            const { password: __, createdAt, updatedAt, ...userWithoutPassword } = user;
 
             return {
                 user: userWithoutPassword,
-                token: 'token' // TODO: Generar el token
+                token: await this.signJwt(userWithoutPassword),
             }
 
         } catch (error) {
@@ -102,5 +129,7 @@ export class AuthService {
         }
 
     }
+
+
 
 }
