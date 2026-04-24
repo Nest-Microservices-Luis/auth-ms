@@ -10,7 +10,7 @@
     "start": "nest start",
     "start:dev": "npm run prisma:docker && nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "prisma:docker": "npx prisma generate",
     "test": "jest",
     "test:watch": "jest --watch",
